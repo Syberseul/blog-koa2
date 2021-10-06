@@ -7,12 +7,16 @@ const bodyparser = require("koa-bodyparser");
 const logger = require("koa-logger");
 const session = require("koa-generic-session");
 const redisStore = require("koa-redis");
-const { REDIS_CONF } = require("./config/db");
+const path = require("path");
+const fs = require("fs");
+const morgan = require("koa-morgan");
 
 const index = require("./routes/index");
 const users = require("./routes/users");
 const blog = require("./routes/blog");
 const user = require("./routes/user");
+
+const { REDIS_CONF } = require("./config/db");
 
 // error handler
 onerror(app);
@@ -40,6 +44,20 @@ app.use(async (ctx, next) => {
   const ms = new Date() - start;
   console.log(`${ctx.method} ${ctx.url} - ${ms}ms`);
 });
+
+// 处理 log 并在不同环境下输出不同 log
+const ENV = process.env.NODE_ENV;
+if (ENV !== "production") {
+  // 开发环境 / 测试环境
+  app.use(morgan("dev")); // 写日志
+} else {
+  // 线上环境
+  const logFileName = path.join(__dirname, "logs/access.log");
+  const writeStream = fs.createWriteStream(logFileName, {
+    flags: "a",
+  });
+  app.use(morgan("combined", { stream: writeStream }));
+}
 
 app.keys = ["Aghria_$611*4sT"];
 app.use(
